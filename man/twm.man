@@ -25,7 +25,7 @@
 .\" other dealings in this Software without prior written authorization
 .\" from The Open Group.
 .\"
-.\" $XFree86: xc/programs/twm/twm.man,v 1.11 2003/08/04 10:32:30 eich Exp $
+.\" $XFree86: xc/programs/twm/twm.man,v 1.9 2001/12/14 20:01:10 dawes Exp $
 .\"
 .de EX		\"Begin example
 .ne 5

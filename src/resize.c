@@ -60,7 +60,7 @@ in this Software without prior written authorization from The Open Group.
  *
  ***********************************************************************/
 
-/* $XFree86: xc/programs/twm/resize.c,v 1.8 2001/12/14 20:01:09 dawes Exp $ */
+/* $XFree86: xc/programs/twm/resize.c,v 1.7 2001/01/17 23:45:07 dawes Exp $ */
 
 #include <stdio.h>
 #include "twm.h"
