@@ -350,7 +350,7 @@ Bool DispatchEvent ()
 void
 HandleEvents()
 {
-    while (!TimeToYield)
+    while (TRUE)
     {
 	if (enter_flag && !QLength(dpy)) {
 	    if (enter_win && enter_win != raise_win) {
@@ -369,12 +369,6 @@ HandleEvents()
 	else
 	    XtDispatchEvent (&Event);
     }
-    if (dpy)
-    {
-	Reborder (CurrentTime);
-	XCloseDisplay(dpy);
-    }
-    exit(0);
 }
 
 
