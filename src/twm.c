@@ -59,7 +59,7 @@ in this Software without prior written authorization from The Open Group.
  * 27-Oct-87 Thomas E. LaStrange	File created
  * 10-Oct-90 David M. Sternlicht        Storing saved colors on root
  ***********************************************************************/
-/* $XFree86: xc/programs/twm/twm.c,v 3.12 2001/12/14 20:01:10 dawes Exp $ */
+/* $XFree86: xc/programs/twm/twm.c,v 3.15 2003/08/04 10:32:30 eich Exp $ */
 
 #include <stdio.h>
 #include <signal.h>
@@ -85,6 +85,7 @@ in this Software without prior written authorization from The Open Group.
 #include <X11/Xlocale.h>
 
 XtAppContext appContext;	/* Xt application context */
+XtSignalId si;
 
 Display *dpy = NULL;		/* which display are we talking to */
 Window ResizeWindow;		/* the window we are resizing */
@@ -104,6 +105,7 @@ Bool PrintErrorMessages = False;	/* controls error messages */
 static int RedirectError;	/* TRUE ==> another window manager running */
 static int TwmErrorHandler ( Display *dpy, XErrorEvent *event );	/* for settting RedirectError */
 static int CatchRedirectError ( Display *dpy, XErrorEvent *event );	/* for everything else */
+static SIGNAL_T sigHandler(int);
 char Info[INFO_LINES][INFO_SIZE];		/* info strings to print */
 int InfoLines;
 char *InitFile = NULL;
@@ -235,8 +237,9 @@ main(int argc, char *argv[])
     }
 
 #define newhandler(sig) \
-    if (signal (sig, SIG_IGN) != SIG_IGN) (void) signal (sig, Done)
+    if (signal (sig, SIG_IGN) != SIG_IGN) (void) signal (sig, sigHandler)
 
+    
     newhandler (SIGINT);
     newhandler (SIGHUP);
     newhandler (SIGQUIT);
@@ -269,6 +272,8 @@ main(int argc, char *argv[])
     XtToolkitInitialize ();
     appContext = XtCreateApplicationContext ();
 
+    si = XtAppAddSignal(appContext, Done, NULL);
+    
     if (!(dpy = XtOpenDisplay (appContext, display_name, "twm", "twm",
 	NULL, 0, &zero, NULL))) {
 	fprintf (stderr, "%s:  unable to open display \"%s\"\n",
@@ -676,6 +681,7 @@ InitVariables()
     Scr->MenuTitleC.fore = black;
     Scr->MenuTitleC.back = white;
     Scr->MenuShadowColor = black;
+    Scr->MenuBorderColor = black;
     Scr->IconC.fore = black;
     Scr->IconC.back = white;
     Scr->IconBorderColor = black;
@@ -695,6 +701,7 @@ InitVariables()
     Scr->SizeStringOffset = 0;
     Scr->BorderWidth = BW;
     Scr->IconBorderWidth = BW;
+    Scr->MenuBorderWidth = BW;
     Scr->UnknownWidth = 0;
     Scr->UnknownHeight = 0;
     Scr->NumAutoRaises = 0;
@@ -825,26 +832,6 @@ RestoreWithdrawnLocation (tmp)
 }
 
 
-/***********************************************************************
- *
- *  Procedure:
- *	Done - cleanup and exit twm
- *
- *  Returned Value:
- *	none
- *
- *  Inputs:
- *	none
- *
- *  Outputs:
- *	none
- *
- *  Special Considerations:
- *	none
- *
- ***********************************************************************
- */
-
 void 
 Reborder (time)
 Time time;
@@ -872,13 +859,42 @@ Time time;
     SetFocus ((TwmWindow*)NULL, time);
 }
 
-SIGNAL_T 
-Done(int sig)
+static SIGNAL_T 
+sigHandler(int sig)
 {
-    TimeToYield = True;
+    XtNoticeSignal(si);
     SIGNAL_RETURN;
 }
 
+/***********************************************************************
+ *
+ *  Procedure:
+ *	Done - cleanup and exit twm
+ *
+ *  Returned Value:
+ *	none
+ *
+ *  Inputs:
+ *	none
+ *
+ *  Outputs:
+ *	none
+ *
+ *  Special Considerations:
+ *	none
+ *
+ ***********************************************************************
+ */
+void
+Done(XtPointer client_data, XtSignalId *si)
+{
+    if (dpy) 
+    {
+	Reborder(CurrentTime);
+	XCloseDisplay(dpy);
+    }
+    exit(0);
+}
 
 /*
  * Error Handlers.  If a client dies, we'll get a BadWindow error (except for
