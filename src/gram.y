@@ -60,6 +60,8 @@ in this Software without prior written authorization from The Open Group.
  * 11-Nov-90 Dave Sternlicht            Adding SaveColors
  * 10-Oct-90 David M. Sternlicht        Storing saved colors on root
  *
+ * $XFree86: xc/programs/twm/gram.y,v 3.9 2002/10/21 13:33:05 alanh Exp $
+ *
  ***********************************************************************/
 
 %{
@@ -71,6 +73,8 @@ in this Software without prior written authorization from The Open Group.
 #include "util.h"
 #include "screen.h"
 #include "parse.h"
+#include "add_window.h"
+#include "icons.h"
 #include <X11/Xos.h>
 #include <X11/Xmu/CharSet.h>
 
@@ -78,11 +82,14 @@ static char *Action = "";
 static char *Name = "";
 static MenuRoot	*root, *pull = NULL;
 
-static MenuRoot *GetRoot();
+static MenuRoot *GetRoot ( char *name, char *fore, char *back );
+static void GotButton ( int butt, int func );
+static void GotKey ( char *key, int func );
+static void GotTitleButton ( char *bitmapname, int func, Bool rightside );
+static Bool CheckWarpScreenArg ( char *s );
+static Bool CheckWarpRingArg ( char *s );
+static Bool CheckColormapArg ( char *s );
 
-static Bool CheckWarpScreenArg(), CheckWarpRingArg();
-static Bool CheckColormapArg();
-static void GotButton(), GotKey(), GotTitleButton();
 static char *ptr;
 static name_list **list;
 static int cont = 0;
@@ -90,9 +97,6 @@ static int color;
 int mods = 0;
 unsigned int mods_used = (ShiftMask | ControlMask | Mod1Mask);
 
-extern int do_single_keyword(), do_string_keyword(), do_number_keyword();
-extern name_list **do_colorlist_keyword();
-extern int do_color_keyword(), do_string_savecolor();
 extern int yylineno;
 %}
 
@@ -120,7 +124,7 @@ extern int yylineno;
 %type <ptr> string
 %type <num> pixmap_list cursor_list color_list save_color_list stmt
 %type <num> win_color_list iconm_list win_list icon_list function menu
-%type <num> noarg sarg error narg squeeze
+%type <num> noarg sarg error narg squeeze color_entry
 %type <num> action button number signed_number full fullkey
 
 %start twmrc 
@@ -184,7 +188,7 @@ stmt		: error
 					    root = GetRoot(TWM_ROOT,NULLSTR,NULLSTR);
 					    Scr->Mouse[$1][C_ROOT][0].item = 
 						AddToMenu(root,"x",Action,
-							  NULLSTR,$2,NULLSTR,NULLSTR);
+							  NULL,$2,NULLSTR,NULLSTR);
 					  }
 					  Action = "";
 					  pull = NULL;
@@ -250,7 +254,7 @@ stmt		: error
 					    root = GetRoot(TWM_ROOT,NULLSTR,NULLSTR);
 					    Scr->DefaultFunction.item = 
 						AddToMenu(root,"x",Action,
-							  NULLSTR,$2, NULLSTR, NULLSTR);
+							  NULL,$2, NULLSTR, NULLSTR);
 					  }
 					  Action = "";
 					  pull = NULL;
@@ -259,7 +263,7 @@ stmt		: error
 					   root = GetRoot(TWM_ROOT,NULLSTR,NULLSTR);
 					   Scr->WindowFunction.item = 
 						AddToMenu(root,"x",Action,
-							  NULLSTR,$2, NULLSTR, NULLSTR);
+							  NULL,$2, NULLSTR, NULLSTR);
 					   Action = "";
 					   pull = NULL;
 					}
@@ -454,7 +458,7 @@ color_entry	: CLKEYWORD string	{ if (!do_colorlist_keyword ($1, color,
 					    ParseError = 1;
 					  }
 					}
-		  win_color_list
+		  win_color_list	{ /* No action */; }
 		| CKEYWORD string	{ if (!do_color_keyword ($1, color,
 								 $2)) {
 					    twmrc_error_prefix();
@@ -560,7 +564,7 @@ function_entries: /* Empty */
 		| function_entries function_entry
 		;
 
-function_entry	: action		{ AddToMenu(root, "", Action, NULLSTR, $1,
+function_entry	: action		{ AddToMenu(root, "", Action, NULL, $1,
 						NULLSTR, NULLSTR);
 					  Action = "";
 					}
@@ -650,22 +654,25 @@ string		: STRING		{ ptr = (char *)malloc(strlen($1)+1);
 					  RemoveDQuote(ptr);
 					  $$ = ptr;
 					}
+		;
 number		: NUMBER		{ $$ = $1; }
 		;
 
 %%
-yyerror(s) char *s;
+void
+yyerror(char *s)
 {
     twmrc_error_prefix();
     fprintf (stderr, "error in input file:  %s\n", s ? s : "");
     ParseError = 1;
 }
-RemoveDQuote(str)
-char *str;
+
+void
+RemoveDQuote(char *str)
 {
     register char *i, *o;
-    register n;
-    register count;
+    register int n;
+    register int count;
 
     for (i=str+1, o=str; *i && *i != '\"'; o++)
     {
@@ -788,7 +795,7 @@ int butt, func;
 	{
 	    root = GetRoot(TWM_ROOT, NULLSTR, NULLSTR);
 	    Scr->Mouse[butt][i][mods].item = AddToMenu(root,"x",Action,
-		    NULLSTR, func, NULLSTR, NULLSTR);
+		    NULL, func, NULLSTR, NULLSTR);
 	}
     }
     Action = "";
@@ -877,6 +884,7 @@ static Bool CheckColormapArg (s)
 }
 
 
+void
 twmrc_error_prefix ()
 {
     fprintf (stderr, "%s:  line %d:  ", ProgramName, yylineno);

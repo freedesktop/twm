@@ -48,6 +48,7 @@ in this Software without prior written authorization from The Open Group.
 /**    TORTIOUS ACTION, ARISING OUT OF OR IN  CONNECTION  WITH  THE  USE    **/
 /**    OR PERFORMANCE OF THIS SOFTWARE.                                     **/
 /*****************************************************************************/
+/* $XFree86: xc/programs/twm/list.h,v 1.5 2001/12/14 20:01:08 dawes Exp $ */
 
 
 /**********************************************************************
@@ -63,13 +64,21 @@ in this Software without prior written authorization from The Open Group.
 #ifndef _LIST_
 #define _LIST_
 
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Intrinsic.h>
+
 typedef struct name_list_struct name_list;
 
-extern void	AddToList();
-extern char*	LookInList();
-extern char*	LookInNameList();
-extern int 	GetColorFromList();
-extern void	FreeList();
+extern void AddToList ( name_list **list_head, char *name, char *ptr );
+extern void FreeList ( name_list **list );
+
+extern int GetColorFromList ( name_list *list_head, char *name, 
+			      XClassHint *class, Pixel *ptr );
+extern char * LookInList ( name_list *list_head, char *name, 
+			   XClassHint *class );
+extern char * LookInNameList ( name_list *list_head, char *name );
+
 
 #endif /* _LIST_ */
 

@@ -60,13 +60,17 @@ in this Software without prior written authorization from The Open Group.
  *
  ***********************************************************************/
 
+/* $XFree86: xc/programs/twm/resize.c,v 1.8 2001/12/14 20:01:09 dawes Exp $ */
+
 #include <stdio.h>
 #include "twm.h"
 #include "parse.h"
 #include "util.h"
 #include "resize.h"
+#include "iconmgr.h"
 #include "add_window.h"
 #include "screen.h"
+#include "events.h"
 
 #define MINHEIGHT 0     /* had been 32 */
 #define MINWIDTH 0      /* had been 60 */
@@ -92,9 +96,8 @@ static int last_width;
 static int last_height;
 
 
-static void do_auto_clamp (tmp_win, evp)
-    TwmWindow *tmp_win;
-    XEvent *evp;
+static void 
+do_auto_clamp (TwmWindow *tmp_win, XEvent *evp)
 {
     Window junkRoot;
     int x, y, h, v, junkbw;
@@ -554,11 +557,11 @@ int height;
 
     (void) sprintf (str, " %4d x %-4d ", dwidth, dheight);
     XRaiseWindow(dpy, Scr->SizeWindow);
-    FBF(Scr->DefaultC.fore, Scr->DefaultC.back, Scr->SizeFont.font->fid);
-    XDrawImageString (dpy, Scr->SizeWindow, Scr->NormalGC,
-		      Scr->SizeStringOffset,
-		      Scr->SizeFont.font->ascent + SIZE_VINDENT,
-		      str, 13);
+    MyFont_ChangeGC(Scr->DefaultC.fore, Scr->DefaultC.back, &Scr->SizeFont);
+    MyFont_DrawImageString (dpy, Scr->SizeWindow, &Scr->SizeFont, 
+			    Scr->NormalGC, Scr->SizeStringOffset,
+			    Scr->SizeFont.ascent + SIZE_VINDENT,
+			    str, 13);
 }
 
 /***********************************************************************
@@ -618,10 +621,10 @@ TwmWindow *tmp_win;
     MoveOutline(Scr->Root, 0, 0, 0, 0, 0, 0);
     XUnmapWindow(dpy, Scr->SizeWindow);
     ConstrainSize (tmp_win, &dragWidth, &dragHeight);
-    AddingX = dragx;
-    AddingY = dragy;
-    AddingW = dragWidth + (2 * tmp_win->frame_bw);
-    AddingH = dragHeight + (2 * tmp_win->frame_bw);
+    AddingX = dragx - tmp_win->frame_bw;
+    AddingY = dragy - tmp_win->frame_bw;
+    AddingW = dragWidth;/* + (2 * tmp_win->frame_bw);*/
+    AddingH = dragHeight;/* + (2 * tmp_win->frame_bw);*/
     SetupWindow (tmp_win, AddingX, AddingY, AddingW, AddingH, -1);
 }
 
@@ -661,7 +664,7 @@ TwmWindow *tmp_win;
  *      borrowed from uwm's CheckConsistency routine.
  * 
  ***********************************************************************/
-
+void
 ConstrainSize (tmp_win, widthp, heightp)
     TwmWindow *tmp_win;
     int *widthp, *heightp;
@@ -1080,6 +1083,7 @@ int flag;
     XUngrabServer (dpy);
 }
 
+void
 SetFrameShape (tmp)
     TwmWindow *tmp;
 {

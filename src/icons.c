@@ -22,6 +22,7 @@ Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
  * */
+/* $XFree86: xc/programs/twm/icons.c,v 1.7 2002/12/10 22:29:54 tsi Exp $ */
 
 /**********************************************************************
  *
@@ -44,11 +45,16 @@ in this Software without prior written authorization from The Open Group.
 #define iconWidth(w)	(Scr->IconBorderWidth * 2 + w->icon_w_width)
 #define iconHeight(w)	(Scr->IconBorderWidth * 2 + w->icon_w_height)
 
-static
+static void splitEntry ( IconEntry *ie, int grav1, int grav2, int w, int h );
+static IconEntry * FindIconEntry ( TwmWindow *tmp_win, IconRegion **irp );
+static IconEntry * prevIconEntry ( IconEntry *ie, IconRegion *ir );
+static void mergeEntries ( IconEntry *old, IconEntry *ie );
+
+static void
 splitEntry (ie, grav1, grav2, w, h)
-    IconEntry	*ie;
-    int		grav1, grav2;
-    int		w, h;
+    IconEntry   *ie;
+    int         grav1, grav2;
+    int         w, h;
 {
     IconEntry	*new;
 
@@ -98,15 +104,17 @@ splitEntry (ie, grav1, grav2, w, h)
     }
 }
 
-roundUp (v, multiple)
+int
+roundUp (int v, int multiple)
 {
     return ((v + multiple - 1) / multiple) * multiple;
 }
 
+void
 PlaceIcon(tmp_win, def_x, def_y, final_x, final_y)
-TwmWindow *tmp_win;
-int def_x, def_y;
-int *final_x, *final_y;
+    TwmWindow *tmp_win;
+    int def_x, def_y;
+    int *final_x, *final_y;
 {
     IconRegion	*ir;
     IconEntry	*ie;
@@ -157,6 +165,7 @@ FindIconEntry (tmp_win, irp)
     return 0;
 }
 
+void
 IconUp (tmp_win)
     TwmWindow   *tmp_win;
 {
@@ -215,7 +224,7 @@ prevIconEntry (ie, ir)
  * regions together
  */
 
-static
+static void
 mergeEntries (old, ie)
     IconEntry	*old, *ie;
 {
@@ -230,6 +239,7 @@ mergeEntries (old, ie)
     }
 }
 
+void
 IconDown (tmp_win)
     TwmWindow   *tmp_win;
 {
@@ -266,9 +276,11 @@ IconDown (tmp_win)
     }
 }
 
+void
 AddIconRegion(geom, grav1, grav2, stepx, stepy)
 char *geom;
 int grav1, grav2;
+int stepx, stepy;
 {
     IconRegion *ir;
     int mask;
@@ -310,6 +322,7 @@ int grav1, grav2;
 }
 
 #ifdef comment
+void
 FreeIconEntries (ir)
     IconRegion	*ir;
 {
@@ -321,6 +334,8 @@ FreeIconEntries (ir)
 	free ((char *) ie);
     }
 }
+
+void
 FreeIconRegions()
 {
     IconRegion *ir, *tmp;
@@ -337,9 +352,10 @@ FreeIconRegions()
 }
 #endif
 
+void
 CreateIconWindow(tmp_win, def_x, def_y)
-TwmWindow *tmp_win;
-int def_x, def_y;
+    TwmWindow *tmp_win;
+    int def_x, def_y;
 {
     unsigned long event_mask;
     unsigned long valuemask;		/* mask for create windows */
@@ -480,7 +496,7 @@ int def_x, def_y;
 	attributes.background_pixmap = pm;
     }
 
-    tmp_win->icon_w_width = XTextWidth(Scr->IconFont.font,
+    tmp_win->icon_w_width = MyFont_TextWidth(&Scr->IconFont,
 	tmp_win->icon_name, strlen(tmp_win->icon_name));
 
     tmp_win->icon_w_width += 6;

@@ -48,6 +48,7 @@ in this Software without prior written authorization from The Open Group.
 /**    TORTIOUS ACTION, ARISING OUT OF OR IN  CONNECTION  WITH  THE  USE    **/
 /**    OR PERFORMANCE OF THIS SOFTWARE.                                     **/
 /*****************************************************************************/
+/* $XFree86: xc/programs/twm/resize.h,v 1.5 2001/12/14 20:01:10 dawes Exp $ */
 
 
 /**********************************************************************
@@ -63,15 +64,19 @@ in this Software without prior written authorization from The Open Group.
 #ifndef _RESIZE_
 #define _RESIZE_
 
-extern void StartResize();
-extern void AddStartResize();
-extern void DoResize();
-extern void DisplaySize();
-extern void EndResize();
-extern void AddEndResize();
-extern void SetupWindow();
-extern void SetupFrame();
+extern void AddEndResize ( TwmWindow *tmp_win );
+extern void AddStartResize ( TwmWindow *tmp_win, int x, int y, int w, int h );
+extern void ConstrainSize ( TwmWindow *tmp_win, int *widthp, int *heightp );
+extern void DisplaySize ( TwmWindow *tmp_win, int width, int height );
+extern void DoResize ( int x_root, int y_root, TwmWindow *tmp_win );
+extern void EndResize ( void );
+extern void fullzoom ( TwmWindow *tmp_win, int flag );
+extern void MenuDoResize ( int x_root, int y_root, TwmWindow *tmp_win );
+extern void MenuEndResize ( TwmWindow *tmp_win );
+extern void MenuStartResize ( TwmWindow *tmp_win, int x, int y, int w, int h );
+extern void SetFrameShape ( TwmWindow *tmp );
+extern void SetupFrame ( TwmWindow *tmp_win, int x, int y, int w, int h, int bw, Bool sendEvent );
+extern void SetupWindow ( TwmWindow *tmp_win, int x, int y, int w, int h, int bw );
+extern void StartResize ( XEvent *evp, TwmWindow *tmp_win, Bool fromtitlebar );
 
 #endif /* _RESIZE_ */
-
-extern void fullzoom();

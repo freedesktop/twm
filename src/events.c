@@ -1,3 +1,4 @@
+/* $XFree86: xc/programs/twm/events.c,v 1.12 2001/12/14 20:01:06 dawes Exp $ */
 /*****************************************************************************/
 /*
 
@@ -63,6 +64,7 @@ in this Software without prior written authorization from The Open Group.
 #include <stdio.h>
 #include "twm.h"
 #include <X11/Xatom.h>
+#include "iconmgr.h"
 #include "add_window.h"
 #include "menus.h"
 #include "events.h"
@@ -71,12 +73,9 @@ in this Software without prior written authorization from The Open Group.
 #include "gram.h"
 #include "util.h"
 #include "screen.h"
-#include "iconmgr.h"
+#include "icons.h"
 #include "version.h"
 
-extern int iconifybox_width, iconifybox_height;
-extern unsigned int mods_used;
-extern int menuFromFrameOrWindowOrTitlebar;
 
 #define MAX_X_EVENT 256
 event_proc EventHandler[MAX_X_EVENT]; /* event handler jump table */
@@ -102,22 +101,21 @@ int DragHeight;
 int CurrentDragX;
 int CurrentDragY;
 
-/* Vars to tell if the resize has moved. */
-extern int ResizeOrigX;
-extern int ResizeOrigY;
-
 static int enter_flag;
 static int ColortableThrashing;
 static TwmWindow *enter_win, *raise_win;
 
-ScreenInfo *FindScreenInfo();
+static void free_window_names ( TwmWindow *tmp, Bool nukefull, Bool nukename, Bool nukeicon );
+static void remove_window_from_ring ( TwmWindow *tmp );
+static void do_menu ( MenuRoot *menu, Window w );
+static Bool HENQueueScanner ( Display *dpy, XEvent *ev, char *args );
+static Bool HLNQueueScanner ( Display *dpy, XEvent *ev, char *args );
+static void flush_expose ( Window w );
+static Bool UninstallRootColormapQScanner ( Display *dpy, XEvent *ev, char *args );
+
 int ButtonPressed = -1;
 int Cancel = FALSE;
 
-void HandleCreateNotify();
-
-void HandleShapeNotify ();
-extern int ShapeEventBase, ShapeErrorBase;
 
 void AutoRaiseWindow (tmp)
     TwmWindow *tmp;
@@ -352,7 +350,7 @@ Bool DispatchEvent ()
 void
 HandleEvents()
 {
-    while (TRUE)
+    while (!TimeToYield)
     {
 	if (enter_flag && !QLength(dpy)) {
 	    if (enter_win && enter_win != raise_win) {
@@ -371,6 +369,12 @@ HandleEvents()
 	else
 	    XtDispatchEvent (&Event);
     }
+    if (dpy)
+    {
+	Reborder (CurrentTime);
+	XCloseDisplay(dpy);
+    }
+    exit(0);
 }
 
 
@@ -394,7 +398,6 @@ HandleColormapNotify()
     ColormapWindow *cwin, **cwins;
     TwmColormap *cmap;
     int lost, won, n, number_cwins;
-    extern TwmColormap *CreateTwmColormap();
 
     if (XFindContext(dpy, cevent->window, ColormapContext, (caddr_t *)&cwin) == XCNOENT)
 	return;
@@ -496,7 +499,7 @@ HandleColormapNotify()
 	    **		the colormaps which are believed to be correct.
 	    */
 
-	    if (won != -1)
+	    if (won != -1) {
 		if (lost != -1)
 		{
 		    /* lower diagonal index calculation */
@@ -518,8 +521,9 @@ HandleColormapNotify()
 		    */
 		    cmap->state |= CM_INSTALLED;
 		}
-	    else if (lost != -1)
+	    } else if (lost != -1) {
 		InstallWindowColormaps(ColormapNotify, (TwmWindow *) NULL);
+	    }
 	}
     }
 
@@ -705,7 +709,8 @@ HandleKeyPress()
 
 
 
-static void free_window_names (tmp, nukefull, nukename, nukeicon)
+static void 
+free_window_names (tmp, nukefull, nukename, nukeicon)
     TwmWindow *tmp;
     Bool nukefull, nukename, nukeicon;
 {
@@ -716,17 +721,16 @@ static void free_window_names (tmp, nukefull, nukename, nukeicon)
     if (tmp->name == tmp->full_name) nukefull = False;
     if (tmp->icon_name == tmp->name) nukename = False;
 
-#define isokay(v) ((v) && (v) != NoName)
-    if (nukefull && isokay(tmp->full_name)) XFree (tmp->full_name);
-    if (nukename && isokay(tmp->name)) XFree (tmp->name);
-    if (nukeicon && isokay(tmp->icon_name)) XFree (tmp->icon_name);
-#undef isokay
+    if (nukefull && tmp->full_name) free (tmp->full_name);
+    if (nukename && tmp->name) free (tmp->name);
+    if (nukeicon && tmp->icon_name) free (tmp->icon_name);
     return;
 }
 
 
 
-void free_cwins (tmp)
+void 
+free_cwins (tmp)
     TwmWindow *tmp;
 {
     int i;
@@ -766,10 +770,7 @@ void free_cwins (tmp)
 void
 HandlePropertyNotify()
 {
-    char *prop = NULL;
-    Atom actual = None;
-    int actual_format;
-    unsigned long nitems, bytesafter;
+    char *name = NULL;
     unsigned long valuemask;		/* mask for create windows */
     XSetWindowAttributes attributes;	/* attributes for create windows */
     Pixmap pm;
@@ -801,21 +802,16 @@ HandlePropertyNotify()
 
     switch (Event.xproperty.atom) {
       case XA_WM_NAME:
-	if (XGetWindowProperty (dpy, Tmp_win->w, Event.xproperty.atom, 0L, 
-				MAX_NAME_LEN, False, XA_STRING, &actual,
-				&actual_format, &nitems, &bytesafter,
-				(unsigned char **) &prop) != Success ||
-	    actual == None)
-	  return;
-	if (!prop) prop = NoName;
+	if (!I18N_FetchName(dpy, Tmp_win->w, &name)) return;
 	free_window_names (Tmp_win, True, True, False);
 
-	Tmp_win->full_name = prop;
-	Tmp_win->name = prop;
+	Tmp_win->full_name = strdup(name ? name : NoName);
+	Tmp_win->name = strdup(name ? name : NoName);
+	if (name) free(name);
 
 	Tmp_win->nameChanged = 1;
 
-	Tmp_win->name_width = XTextWidth (Scr->TitleBarFont.font,
+	Tmp_win->name_width = MyFont_TextWidth (&Scr->TitleBarFont,
 					  Tmp_win->name,
 					  strlen (Tmp_win->name));
 
@@ -835,15 +831,10 @@ HandlePropertyNotify()
 	break;
 
       case XA_WM_ICON_NAME:
-	if (XGetWindowProperty (dpy, Tmp_win->w, Event.xproperty.atom, 0, 
-				MAX_ICON_NAME_LEN, False, XA_STRING, &actual,
-				&actual_format, &nitems, &bytesafter,
-				(unsigned char **) &prop) != Success ||
-	    actual == None)
-	  return;
-	if (!prop) prop = NoName;
+	if (!I18N_GetIconName(dpy, Tmp_win->w, &name)) return;
 	free_window_names (Tmp_win, False, False, True);
-	Tmp_win->icon_name = prop;
+	Tmp_win->icon_name = strdup(name ? name : NoName);
+	if (name) free(name);
 
 	RedoIconName();
 	break;
@@ -989,7 +980,7 @@ HandlePropertyNotify()
  *
  ***********************************************************************
  */
-
+void
 RedoIconName()
 {
     int x, y;
@@ -1009,7 +1000,7 @@ RedoIconName()
     if (Tmp_win->icon_not_ours)
 	return;
 
-    Tmp_win->icon_w_width = XTextWidth(Scr->IconFont.font,
+    Tmp_win->icon_w_width = MyFont_TextWidth(&Scr->IconFont,
 	Tmp_win->icon_name, strlen(Tmp_win->icon_name));
 
     Tmp_win->icon_w_width += 6;
@@ -1090,9 +1081,6 @@ HandleClientMessage()
  *
  ***********************************************************************
  */
-
-static void flush_expose();
-
 void
 HandleExpose()
 {
@@ -1111,14 +1099,15 @@ HandleExpose()
 	int i;
 	int height;
 
-	FBF(Scr->DefaultC.fore, Scr->DefaultC.back,
-	    Scr->DefaultFont.font->fid);
+	MyFont_ChangeGC(Scr->DefaultC.fore, Scr->DefaultC.back,
+	    &Scr->DefaultFont);
 
 	height = Scr->DefaultFont.height+2;
 	for (i = 0; i < InfoLines; i++)
 	{
-	    XDrawString(dpy, Scr->InfoWindow, Scr->NormalGC,
-		5, (i*height) + Scr->DefaultFont.y, Info[i], strlen(Info[i]));
+	    MyFont_DrawString(dpy, Scr->InfoWindow, &Scr->DefaultFont, 
+		Scr->NormalGC, 5, (i*height) + Scr->DefaultFont.y, Info[i], 
+		strlen(Info[i]));
 	}
 	flush_expose (Event.xany.window);
     } 
@@ -1126,22 +1115,21 @@ HandleExpose()
     {
 	if (Event.xany.window == Tmp_win->title_w)
 	{
-	    FBF(Tmp_win->title.fore, Tmp_win->title.back,
-		Scr->TitleBarFont.font->fid);
+	    MyFont_ChangeGC(Tmp_win->title.fore, Tmp_win->title.back,
+		&Scr->TitleBarFont);
 
-	    XDrawString (dpy, Tmp_win->title_w, Scr->NormalGC,
-			 Scr->TBInfo.titlex, Scr->TitleBarFont.y, 
-			 Tmp_win->name, strlen(Tmp_win->name));
+	    MyFont_DrawString (dpy, Tmp_win->title_w, &Scr->TitleBarFont,
+		Scr->NormalGC, Scr->TBInfo.titlex, Scr->TitleBarFont.y, 
+		Tmp_win->name, strlen(Tmp_win->name));
 	    flush_expose (Event.xany.window);
 	}
 	else if (Event.xany.window == Tmp_win->icon_w)
 	{
-	    FBF(Tmp_win->iconc.fore, Tmp_win->iconc.back,
-		Scr->IconFont.font->fid);
+	    MyFont_ChangeGC(Tmp_win->iconc.fore, Tmp_win->iconc.back,
+		&Scr->IconFont);
 
-	    XDrawString (dpy, Tmp_win->icon_w,
-		Scr->NormalGC,
-		Tmp_win->icon_x, Tmp_win->icon_y,
+	    MyFont_DrawString (dpy, Tmp_win->icon_w, &Scr->IconFont,
+		Scr->NormalGC, Tmp_win->icon_x, Tmp_win->icon_y,
 		Tmp_win->icon_name, strlen(Tmp_win->icon_name));
 	    flush_expose (Event.xany.window);
 	    return;
@@ -1167,9 +1155,10 @@ HandleExpose()
 	if (Tmp_win->list) {
 	    if (Event.xany.window == Tmp_win->list->w)
 	    {
-		FBF(Tmp_win->list->fore, Tmp_win->list->back,
-		    Scr->IconManagerFont.font->fid);
-		XDrawString (dpy, Event.xany.window, Scr->NormalGC, 
+		MyFont_ChangeGC(Tmp_win->list->fore, Tmp_win->list->back,
+		    &Scr->IconManagerFont);
+		MyFont_DrawString (dpy, Event.xany.window,
+		    &Scr->IconManagerFont, Scr->NormalGC,
 		    iconmgr_textx, Scr->IconManagerFont.y+4,
 		    Tmp_win->icon_name, strlen(Tmp_win->icon_name));
 		DrawIconManagerBorder(Tmp_win->list);
@@ -1679,10 +1668,12 @@ HandleButtonRelease()
 	      case F_FORCEMOVE:
 		ButtonPressed = -1;
 		break;
+	      case F_WARPTOSCREEN:
+		XUngrabPointer(dpy, CurrentTime);
+		/* fall through */
 	      case F_CIRCLEUP:
 	      case F_CIRCLEDOWN:
 	      case F_REFRESH:
-	      case F_WARPTOSCREEN:
 		PopDownMenu();
 		break;
 	      default:
@@ -1744,7 +1735,8 @@ HandleButtonRelease()
 
 
 
-static do_menu (menu, w)
+static void 
+do_menu (menu, w)
     MenuRoot *menu;			/* menu to pop up */
     Window w;				/* invoking window or None */
 {
@@ -1785,6 +1777,10 @@ HandleButtonPress()
     unsigned int modifier;
     Cursor cur;
 
+    /* too much code relies on this assumption */
+    if (Event.xbutton.button > MAX_BUTTONS)
+	return;
+
     /* pop down the menu, if any */
     if (ActiveMenu != NULL)
 	PopDownMenu();
@@ -1799,12 +1795,13 @@ HandleButtonPress()
 	Cancel = TRUE;
 	CurrentDragX = origDragX;
 	CurrentDragY = origDragY;
-	if (!menuFromFrameOrWindowOrTitlebar)
+	if (!menuFromFrameOrWindowOrTitlebar) {
 	  if (Scr->OpaqueMove && DragWindow != None) {
 	    XMoveWindow (dpy, DragWindow, origDragX, origDragY);
 	  } else {
 	    MoveOutline(Scr->Root, 0, 0, 0, 0, 0, 0);
 	  }
+	}
 	XUnmapWindow(dpy, Scr->SizeWindow);
 	if (!Scr->OpaqueMove)
 	    UninstallRootColormap();
@@ -2593,7 +2590,7 @@ static void flush_expose (w)
  *
  ***********************************************************************
  */
-
+void
 InstallWindowColormaps (type, tmp)
     int type;
     TwmWindow *tmp;
@@ -2703,7 +2700,7 @@ InstallWindowColormaps (type, tmp)
  *	   other colormap list would potentially be loaded anyway.
  ***********************************************************************
  */
-
+void
 InstallRootColormap()
 {
     TwmWindow *tmp;
@@ -2729,20 +2726,21 @@ UninstallRootColormapQScanner(dpy, ev, args)
     XEvent *ev;
     char *args;
 {
-    if (!*args)
+    if (!*args) {
 	if (ev->type == EnterNotify) {
 	    if (ev->xcrossing.mode != NotifyGrab)
 		*args = 1;
 	} else if (ev->type == LeaveNotify) {
 	    if (ev->xcrossing.mode == NotifyNormal)
+
 		*args = 1;
 	}
-
+    }
     return (False);
 }
 
 
-
+void
 UninstallRootColormap()
 {
     char args;
@@ -2766,6 +2764,7 @@ UninstallRootColormap()
 }
 
 #ifdef TRACE
+void
 dumpevent (e)
     XEvent *e;
 {

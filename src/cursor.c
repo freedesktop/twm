@@ -22,6 +22,7 @@ Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
  * */
+/* $XFree86: xc/programs/twm/cursor.c,v 1.5 2001/12/14 20:01:06 dawes Exp $ */
 
 /***********************************************************************
  *
@@ -124,7 +125,8 @@ static struct _CursorName {
 {"xterm",		XC_xterm,		None},
 };
 
-void NewFontCursor (cp, str)
+void 
+NewFontCursor (cp, str)
     Cursor *cp;
     char *str;
 {
@@ -145,9 +147,10 @@ void NewFontCursor (cp, str)
 	     ProgramName, str);
 }
 
+void
 NewBitmapCursor(cp, source, mask)
-Cursor *cp;
-char *source, *mask;
+    Cursor *cp;
+    char *source, *mask;
 {
     int hotx, hoty;
     int sx, sy, mx, my;

@@ -48,6 +48,7 @@ in this Software without prior written authorization from The Open Group.
 /**    TORTIOUS ACTION, ARISING OUT OF OR IN  CONNECTION  WITH  THE  USE    **/
 /**    OR PERFORMANCE OF THIS SOFTWARE.                                     **/
 /*****************************************************************************/
+/* $XFree86: xc/programs/twm/menus.h,v 1.6 2001/12/14 20:01:09 dawes Exp $ */
 
 
 /***********************************************************************
@@ -147,6 +148,9 @@ extern int ConstMoveXL;
 extern int ConstMoveXR;
 extern int ConstMoveYT;
 extern int ConstMoveYB;
+extern int menuFromFrameOrWindowOrTitlebar;
+extern int ResizeOrigX;
+extern int ResizeOrigY;
 
 #define MAXMENUDEPTH	10	/* max number of nested menus */
 extern int MenuDepth;
@@ -163,16 +167,40 @@ extern int MenuDepth;
 #define COLORMAP_PREV "prev"
 #define COLORMAP_DEFAULT "default"
 
-extern void InitTitlebarButtons();
-extern void InitMenus();
-extern MenuRoot *NewMenuRoot();
-extern MenuItem *AddToMenu();
-extern Bool PopUpMenu();
-extern MenuRoot *FindMenuRoot();
-extern Bool AddFuncKey();
-extern int ExecuteFunction();
-extern int DeferExecution();
-extern void Execute();
-extern void FocusOnRoot();
+extern void InitMenus ( void );
+extern Bool AddFuncKey ( char *name, int cont, int mods, int func, char *win_name, char *action );
+extern int CreateTitleButton ( char *name, int func, char *action, MenuRoot *menuroot, Bool rightside, Bool append );
+extern void InitTitlebarButtons ( void );
+extern void PaintEntry ( MenuRoot *mr, MenuItem *mi, int exposure );
+extern void PaintMenu ( MenuRoot *mr, XEvent *e );
+extern void UpdateMenu ( void );
+extern MenuRoot * NewMenuRoot ( char *name );
+extern MenuItem * AddToMenu ( MenuRoot *menu, char *item, char *action, MenuRoot *sub, int func, char *fore, char *back );
+extern void MakeMenus ( void );
+extern void MakeMenu ( MenuRoot *mr );
+extern Bool PopUpMenu ( MenuRoot *menu, int x, int y, Bool center );
+extern void PopDownMenu ( void );
+extern MenuRoot * FindMenuRoot ( char *name );
+extern void resizeFromCenter ( Window w, TwmWindow *tmp_win );
+extern int WarpThere ( TwmWindow * t );
+extern int ExecuteFunction ( int func, char *action, Window w, TwmWindow *tmp_win, XEvent *eventp, int context, int pulldown );
+extern int DeferExecution ( int context, int func, Cursor cursor );
+extern void ReGrab ( void );
+extern Bool NeedToDefer ( MenuRoot *root );
+extern void Execute ( char *s );
+extern void FocusOnRoot ( void );
+extern void DeIconify ( TwmWindow *tmp_win );
+extern void Iconify ( TwmWindow *tmp_win, int def_x, int def_y );
+extern void SetMapStateProp ( TwmWindow *tmp_win, int state );
+extern void WarpToScreen ( int n, int inc );
+extern void BumpWindowColormap ( TwmWindow *tmp, int inc );
+extern void HideIconManager ( void );
+extern void SetBorder ( TwmWindow *tmp, Bool onoroff );
+extern void DestroyMenu ( MenuRoot *menu );
+extern void WarpAlongRing ( XButtonEvent *ev, Bool forward );
+extern void WarpToWindow ( TwmWindow *t );
+extern void SendDeleteWindowMessage ( TwmWindow *tmp, Time timestamp );
+extern void SendSaveYourselfMessage ( TwmWindow *tmp, Time timestamp );
+extern void SendTakeFocusMessage ( TwmWindow *tmp, Time timestamp );
 
 #endif /* _MENUS_ */

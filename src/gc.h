@@ -48,6 +48,7 @@ in this Software without prior written authorization from The Open Group.
 /**    TORTIOUS ACTION, ARISING OUT OF OR IN  CONNECTION  WITH  THE  USE    **/
 /**    OR PERFORMANCE OF THIS SOFTWARE.                                     **/
 /*****************************************************************************/
+/* $XFree86: xc/programs/twm/gc.h,v 1.5 2001/12/14 20:01:07 dawes Exp $ */
 
 
 /**********************************************************************
@@ -63,6 +64,6 @@ in this Software without prior written authorization from The Open Group.
 #ifndef _GC_
 #define _GC_
 
-extern void CreateGCs();
+extern void CreateGCs( void );
 
 #endif /* _GC_ */

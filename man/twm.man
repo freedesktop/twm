@@ -24,6 +24,9 @@
 .\" not be used in advertising or otherwise to promote the sale, use or
 .\" other dealings in this Software without prior written authorization
 .\" from The Open Group.
+.\"
+.\" $XFree86: xc/programs/twm/twm.man,v 1.10 2002/10/12 16:06:46 herrb Exp $
+.\"
 .de EX		\"Begin example
 .ne 5
 .if n .sp 1
@@ -38,7 +41,7 @@
 .if t .sp .5
 ..
 .ta .3i .6i .9i 1.2i 1.5i 1.8i
-.TH TWM 1 "Release 6.4" "X Version 11"
+.TH TWM 1 __xorgversion__
 .SH NAME
 twm \- Tab Window Manager for the X Window System
 .SH SYNTAX
@@ -133,12 +136,11 @@ differing visual types.
 .B "$HOME/.twmrc"
 This is the usual name for an individual user's startup file.
 .TP 8
-.B "<XRoot>/lib/X11/twm/system.twmrc"
+.B __projectroot__/lib/X11/twm/system.twmrc
 If neither of the preceding files are found, \fItwm\fP will look in this
 file for a 
 default configuration.  This is often tailored by the site administrator to
-provide convenient menus or familiar bindings for novice users.  <XRoot>
-refers to the root of the X11 install tree.
+provide convenient menus or familiar bindings for novice users.
 .PP
 If no startup files are found, \fItwm\fP will use the built-in defaults
 described above.  The only resource used by \fItwm\fP is 
@@ -330,7 +332,8 @@ Shapes from the \fBcursor\fP font may be specified directly as:
 .EE
 where \fIcursorname\fP is one of the cursor names listed below, and
 \fIstring\fP is the name of a glyph as found in the file
-<XRoot>/include/X11/cursorfont.h (without the ``XC_'' prefix).
+.I __projectroot__/include/X11/cursorfont.h
+(without the ``XC_'' prefix).
 If the cursor is to be defined
 from bitmap files, the following syntax is used instead:
 .EX 0
@@ -1096,8 +1099,10 @@ This function displays an outline of the selected window.  Crossing a border
 rubber band until the invoking button is released.  To abort a resize,
 press another button before releasing the first button.
 .IP "\fBf.restart\fP" 8
-
 This function kills and restarts \fItwm\fP.
+.IP "\fBf.startwm\fP \fIstring\fP" 8
+This function kills \fItwm\fP and starts another window manager, as
+specified by \fIstring\fP.
 .IP "\fBf.righticonmgr\fI" 8
 This function is similar to \fBf.nexticonmgr\fP except that wrapping does
 not change rows.
@@ -1252,9 +1257,9 @@ they may be lost if they are iconified and no bindings to
 .SH FILES
 .PP
 .nf
- $HOME/.twmrc.<screen number>
- $HOME/.twmrc
- <XRoot>/lib/X11/twm/system.twmrc
+.I $HOME/.twmrc.<screen number>
+.I $HOME/.twmrc
+.I __projectroot__/lib/X11/twm/system.twmrc
 .fi
 .SH "ENVIRONMENT VARIABLES"
 .IP "DISPLAY" 8
@@ -1265,7 +1270,7 @@ This variable is used as the prefix for files that begin with a tilde and
 for locating the \fItwm\fP startup file.
 .SH "SEE ALSO"
 .PP
-X(1), Xserver(1), xdm(1), xrdb(1)
+X(__miscmansuffix__), Xserver(1), xdm(1), xrdb(1)
 .SH AUTHORS
 Tom LaStrange, Solbourne Computer; Jim Fulton, MIT X Consortium;
 Steve Pitschke, Stardent Computer; Keith Packard, MIT X Consortium;

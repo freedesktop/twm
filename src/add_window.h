@@ -48,6 +48,7 @@ in this Software without prior written authorization from The Open Group.
 /**    TORTIOUS ACTION, ARISING OUT OF OR IN  CONNECTION  WITH  THE  USE    **/
 /**    OR PERFORMANCE OF THIS SOFTWARE.                                     **/
 /*****************************************************************************/
+/* $XFree86: xc/programs/twm/add_window.h,v 1.6 2001/12/14 20:01:06 dawes Exp $ */
 
 
 /**********************************************************************
@@ -63,15 +64,22 @@ in this Software without prior written authorization from The Open Group.
 #ifndef _ADD_WINDOW_
 #define _ADD_WINDOW_
 
+#include "iconmgr.h"
+
 extern char NoName[];
 
-extern TwmWindow *AddWindow();
-extern int MappedNotOverride();
-extern void GrabButtons();
-extern void GrabKeys();
-extern void UngrabButtons();
-extern void UngrabKeys();
-extern void GetWindowSizeHints();
+extern void AddDefaultBindings ( void );
+extern TwmWindow * AddWindow ( Window w, int iconm, IconMgr *iconp );
+extern ColormapWindow * CreateColormapWindow ( Window w, Bool creating_parent, Bool property_window );
+extern TwmColormap * CreateTwmColormap ( Colormap c );
+extern void FetchWmColormapWindows ( TwmWindow *tmp );
+extern void FetchWmProtocols ( TwmWindow *tmp );
+extern void GetGravityOffsets ( TwmWindow *tmp, int *xp, int *yp );
+extern void GetWindowSizeHints ( TwmWindow *tmp );
+extern void GrabButtons ( TwmWindow *tmp_win );
+extern void GrabKeys ( TwmWindow *tmp_win );
+extern int MappedNotOverride ( Window w );
+extern void SetHighlightPixmap ( char *filename );
 extern int AddingX;	
 extern int AddingY;
 extern int AddingW;

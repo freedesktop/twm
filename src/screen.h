@@ -32,6 +32,7 @@ in this Software without prior written authorization from The Open Group.
  * 11-3-88 Dave Payne, Apple Computer			File created
  *
  ***********************************************************************/
+/* $XFree86: xc/programs/twm/screen.h,v 1.5 2001/12/14 20:01:10 dawes Exp $ */
 
 #ifndef _SCREEN_
 #define _SCREEN_
@@ -83,7 +84,7 @@ typedef struct ScreenInfo
     Pixmap UnknownPm;		/* the unknown icon pixmap */
     Pixmap siconifyPm;		/* the icon manager iconify pixmap */
     Pixmap pullPm;		/* pull right menu icon */
-    int	pullW, pullH;		/* size of pull right menu icon */
+    unsigned int pullW, pullH;	/* size of pull right menu icon */
     Pixmap hilitePm;		/* focus highlight window background */
     int hilite_pm_width, hilite_pm_height;  /* cache the size */
 

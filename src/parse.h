@@ -1,3 +1,4 @@
+/* $XFree86: xc/programs/twm/parse.h,v 1.11 2001/12/14 20:01:09 dawes Exp $ */
 /*****************************************************************************/
 /*
 
@@ -63,10 +64,31 @@ in this Software without prior written authorization from The Open Group.
 #ifndef _PARSE_
 #define _PARSE_
 
-extern int ParseTwmrc(), ParseStringList();
-extern int (*twmInputFunc)();
-extern void twmUnput();
-extern void TwmOutput();
+#include "list.h"
+
+extern void assign_var_savecolor ( void );
+extern int do_single_keyword ( int keyword );
+extern int do_string_keyword ( int keyword, char *s );
+extern int do_number_keyword ( int keyword, int num );
+extern name_list **do_colorlist_keyword ( int keyword, int colormode, 
+					  char *s );
+extern int do_color_keyword ( int keyword, int colormode, char *s );
+void put_pixel_on_root ( Pixel pixel );
+extern void do_string_savecolor ( int colormode, char *s );
+extern void do_var_savecolor ( int key );
+extern int ParseStringList ( char **sl );
+extern int ParseTwmrc ( char *filename );
+extern int parse_keyword ( char *s, int *nump );
+extern void TwmOutput ( int c );
+extern void twmUnput ( int c );
+extern void do_squeeze_entry ( name_list **list, char *name, int justify, 
+			       int num, int denom );
+
+
+extern int (*twmInputFunc)(void);
+extern int ConstrainedMoveTime;
+extern char *defTwmrc[];
+extern int mods;
 
 #define F_NOP			0
 #define F_BEEP			1
@@ -116,6 +138,8 @@ extern void TwmOutput();
 #define F_HIDELIST		45
 
 #define F_MENU			101	/* string */
+#define F_WARPNEXT		112	/* string */
+#define F_WARPPREV		113	/* string */
 #define F_WARPTO		102	/* string */
 #define F_WARPTOICONMGR		103	/* string */
 #define F_WARPRING		104	/* string */
@@ -126,6 +150,7 @@ extern void TwmOutput();
 #define F_WARPTOSCREEN		109	/* string */
 #define F_COLORMAP		110	/* string */
 #define F_PRIORITY		111	/* string */
+#define F_STARTWM		114	/* string */
 
 #define D_NORTH			1
 #define D_SOUTH			2

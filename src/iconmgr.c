@@ -22,6 +22,7 @@ Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
  * */
+/* $XFree86: xc/programs/twm/iconmgr.c,v 1.6 2001/12/14 20:01:08 dawes Exp $ */
 
 /***********************************************************************
  *
@@ -32,6 +33,7 @@ in this Software without prior written authorization from The Open Group.
  * 09-Mar-89 Tom LaStrange		File Created
  *
  ***********************************************************************/
+/* $XFree86: xc/programs/twm/iconmgr.c,v 1.6 2001/12/14 20:01:08 dawes Exp $ */
 
 #include <stdio.h>
 #include "twm.h"
@@ -491,6 +493,8 @@ WList *AddIconManager(tmp_win)
 	XMapWindow(dpy, ip->twm_win->frame);
     }
 
+    if (Active == NULL) Active = tmp;
+
     return (tmp);
 }
 
@@ -514,7 +518,8 @@ void InsertInIconManager(ip, tmp, tmp_win)
 {
     WList *tmp1;
     int added;
-    int (*compar)() = (Scr->CaseSensitive ? strcmp : XmuCompareISOLatin1);
+    int (*compar)(const char *, const char *) 
+	= (Scr->CaseSensitive ? strcmp : XmuCompareISOLatin1);
 
     added = FALSE;
     if (ip->first == NULL)
@@ -663,7 +668,8 @@ void SortIconManager(ip)
 {
     WList *tmp1, *tmp2;
     int done;
-    int (*compar)() = (Scr->CaseSensitive ? strcmp : XmuCompareISOLatin1);
+    int (*compar)(const char *, const char *) 
+	= (Scr->CaseSensitive ? strcmp : XmuCompareISOLatin1);
 
     if (ip == NULL)
 	ip = Active->iconmgr;

@@ -48,6 +48,7 @@ in this Software without prior written authorization from The Open Group.
 /**    TORTIOUS ACTION, ARISING OUT OF OR IN  CONNECTION  WITH  THE  USE    **/
 /**    OR PERFORMANCE OF THIS SOFTWARE.                                     **/
 /*****************************************************************************/
+/* $XFree86: xc/programs/twm/events.h,v 1.6 2001/12/14 20:01:07 dawes Exp $ */
 
 
 /***********************************************************************
@@ -63,34 +64,49 @@ in this Software without prior written authorization from The Open Group.
 #ifndef _EVENTS_
 #define _EVENTS_
 
-typedef void (*event_proc)();
+#include "screen.h"
+#include "twm.h"
 
-extern void InitEvents();
-extern Bool StashEventTime();
+typedef void (*event_proc)(void);
+
 extern Time lastTimestamp;
-extern void SimulateMapRequest();
-extern void AutoRaiseWindow();
 #define LastTimestamp() lastTimestamp
-extern Bool DispatchEvent();
-extern Bool DispatchEvent2();
-extern void HandleEvents();
-extern void HandleExpose();
-extern void HandleDestroyNotify();
-extern void HandleMapRequest();
-extern void HandleMapNotify();
-extern void HandleUnmapNotify();
-extern void HandleMotionNotify();
-extern void HandleButtonRelease();
-extern void HandleButtonPress();
-extern void HandleEnterNotify();
-extern void HandleLeaveNotify();
-extern void HandleConfigureRequest();
-extern void HandleClientMessage();
-extern void HandlePropertyNotify();
-extern void HandleKeyPress();
-extern void HandleColormapNotify();
-extern void HandleVisibilityNotify();
-extern void HandleUnknown();
+
+extern void AutoRaiseWindow ( TwmWindow *tmp );
+extern void SetRaiseWindow ( TwmWindow *tmp );
+extern void InitEvents ( void );
+extern Bool StashEventTime ( XEvent *ev );
+extern Window WindowOfEvent ( XEvent *e );
+extern Bool DispatchEvent2 ( void );
+extern Bool DispatchEvent ( void );
+extern void HandleEvents ( void );
+extern void HandleColormapNotify ( void );
+extern void HandleVisibilityNotify ( void );
+extern void HandleKeyPress ( void );
+extern void free_cwins ( TwmWindow *tmp );
+extern void HandlePropertyNotify ( void );
+extern void RedoIconName ( void );
+extern void HandleClientMessage ( void );
+extern void HandleExpose ( void );
+extern void HandleDestroyNotify ( void );
+extern void HandleCreateNotify ( void );
+extern void HandleMapRequest ( void );
+extern void SimulateMapRequest ( Window w );
+extern void HandleMapNotify ( void );
+extern void HandleUnmapNotify ( void );
+extern void HandleMotionNotify ( void );
+extern void HandleButtonRelease ( void );
+extern void HandleButtonPress ( void );
+extern void HandleEnterNotify ( void );
+extern void HandleLeaveNotify ( void );
+extern void HandleConfigureRequest ( void );
+extern void HandleShapeNotify ( void );
+extern void HandleUnknown ( void );
+extern int Transient ( Window w, Window *propw );
+extern ScreenInfo * FindScreenInfo ( Window w );
+extern void InstallWindowColormaps ( int type, TwmWindow *tmp );
+extern void InstallRootColormap ( void );
+extern void UninstallRootColormap ( void );
 
 extern event_proc EventHandler[];
 extern Window DragWindow;
@@ -106,6 +122,12 @@ extern int CurrentDragY;
 extern int ButtonPressed;
 extern int Cancel;
 
+extern int Context;
+
 extern XEvent Event;
+
+extern unsigned int mods_used;
+
+extern int MovedFromKeyPress;
 
 #endif /* _EVENTS_ */

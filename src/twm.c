@@ -59,11 +59,13 @@ in this Software without prior written authorization from The Open Group.
  * 27-Oct-87 Thomas E. LaStrange	File created
  * 10-Oct-90 David M. Sternlicht        Storing saved colors on root
  ***********************************************************************/
+/* $XFree86: xc/programs/twm/twm.c,v 3.12 2001/12/14 20:01:10 dawes Exp $ */
 
 #include <stdio.h>
 #include <signal.h>
 #include <fcntl.h>
 #include "twm.h"
+#include "iconmgr.h"
 #include "add_window.h"
 #include "gc.h"
 #include "parse.h"
@@ -73,14 +75,18 @@ in this Software without prior written authorization from The Open Group.
 #include "util.h"
 #include "gram.h"
 #include "screen.h"
-#include "iconmgr.h"
+#include "parse.h"
+#include "session.h"
 #include <X11/Xproto.h>
 #include <X11/Xatom.h>
 #include <X11/SM/SMlib.h>
+#include <X11/Xmu/Error.h>
+#include <X11/extensions/sync.h>
+#include <X11/Xlocale.h>
 
 XtAppContext appContext;	/* Xt application context */
 
-Display *dpy;			/* which display are we talking to */
+Display *dpy = NULL;		/* which display are we talking to */
 Window ResizeWindow;		/* the window we are resizing */
 
 int MultiScreen = TRUE;		/* try for more than one screen? */
@@ -93,10 +99,11 @@ ScreenInfo **ScreenList;	/* structures for each screen */
 ScreenInfo *Scr = NULL;		/* the cur and prev screens */
 int PreviousScreen;		/* last screen that we were on */
 int FirstScreen;		/* TRUE ==> first screen of display */
+volatile Bool TimeToYield = FALSE;	/* TRUE ==> exit requested */
 Bool PrintErrorMessages = False;	/* controls error messages */
 static int RedirectError;	/* TRUE ==> another window manager running */
-static int CatchRedirectError();	/* for settting RedirectError */
-static int TwmErrorHandler();	/* for everything else */
+static int TwmErrorHandler ( Display *dpy, XErrorEvent *event );	/* for settting RedirectError */
+static int CatchRedirectError ( Display *dpy, XErrorEvent *event );	/* for everything else */
 char Info[INFO_LINES][INFO_SIZE];		/* info strings to print */
 int InfoLines;
 char *InitFile = NULL;
@@ -131,15 +138,14 @@ unsigned int JunkWidth, JunkHeight, JunkBW, JunkDepth, JunkMask;
 char *ProgramName;
 int Argc;
 char **Argv;
-char **Environ;
 
 Bool RestartPreviousState = False;	/* try to restart in previous state */
 
 unsigned long black, white;
 
-extern void assign_var_savecolor();
-
 Atom TwmAtoms[11];
+
+Bool use_fontset;		/* use XFontSet-related functions or not */
 
 /* don't change the order of these strings */
 static char* atom_names[11] = {
@@ -164,10 +170,8 @@ static char* atom_names[11] = {
  ***********************************************************************
  */
 
-main(argc, argv, environ)
-    int argc;
-    char **argv;
-    char **environ;
+int
+main(int argc, char *argv[])
 {
     Window root, parent, *children;
     unsigned int nchildren;
@@ -176,15 +180,14 @@ main(argc, argv, environ)
     unsigned long valuemask;	/* mask for create windows */
     XSetWindowAttributes attributes;	/* attributes for create windows */
     int numManaged, firstscrn, lastscrn, scrnum;
-    extern ColormapWindow *CreateColormapWindow();
     int zero = 0;
     char *restore_filename = NULL;
     char *client_id = NULL;
+    char *loc;
 
     ProgramName = argv[0];
     Argc = argc;
     Argv = argv;
-    Environ = environ;
 
     for (i = 1; i < argc; i++) {
 	if (argv[i][0] == '-') {
@@ -221,6 +224,14 @@ main(argc, argv, environ)
 		 "usage:  %s [-display dpy] [-f file] [-s] [-q] [-v] [-clientId id] [-restore file]\n",
 		 ProgramName);
 	exit (1);
+    }
+
+    loc = setlocale(LC_ALL, "");
+    if (!loc || !strcmp(loc, "C") || !strcmp(loc, "POSIX") ||
+	!XSupportsLocale()) {
+	 use_fontset = False;
+    } else {
+	 use_fontset = True;
     }
 
 #define newhandler(sig) \
@@ -563,7 +574,7 @@ main(argc, argv, environ)
 					 (Visual *) CopyFromParent,
 					 valuemask, &attributes);
 
-	Scr->SizeStringWidth = XTextWidth (Scr->SizeFont.font,
+	Scr->SizeStringWidth = MyFont_TextWidth (&Scr->SizeFont,
 					   " 8888 x 8888 ", 13);
 	valuemask = (CWBorderPixel | CWBackPixel | CWBitGravity);
 	attributes.bit_gravity = NorthWestGravity;
@@ -595,6 +606,7 @@ main(argc, argv, environ)
     HandlingEvents = TRUE;
     InitEvents();
     HandleEvents();
+    exit(0);
 }
 
 /***********************************************************************
@@ -605,6 +617,7 @@ main(argc, argv, environ)
  ***********************************************************************
  */
 
+void
 InitVariables()
 {
     FreeList(&Scr->BorderColorL);
@@ -731,21 +744,27 @@ InitVariables()
 #define DEFAULT_FAST_FONT "fixed"
 
     Scr->TitleBarFont.font = NULL;
+    Scr->TitleBarFont.fontset = NULL;
     Scr->TitleBarFont.name = DEFAULT_NICE_FONT;
     Scr->MenuFont.font = NULL;
+    Scr->MenuFont.fontset = NULL;
     Scr->MenuFont.name = DEFAULT_NICE_FONT;
     Scr->IconFont.font = NULL;
+    Scr->IconFont.fontset = NULL;
     Scr->IconFont.name = DEFAULT_NICE_FONT;
     Scr->SizeFont.font = NULL;
+    Scr->SizeFont.fontset = NULL;
     Scr->SizeFont.name = DEFAULT_FAST_FONT;
     Scr->IconManagerFont.font = NULL;
+    Scr->IconManagerFont.fontset = NULL;
     Scr->IconManagerFont.name = DEFAULT_NICE_FONT;
     Scr->DefaultFont.font = NULL;
+    Scr->DefaultFont.fontset = NULL;
     Scr->DefaultFont.name = DEFAULT_FAST_FONT;
 
 }
 
-
+void
 CreateFonts ()
 {
     GetFont(&Scr->TitleBarFont);
@@ -757,7 +776,7 @@ CreateFonts ()
     Scr->HaveFonts = TRUE;
 }
 
-
+void
 RestoreWithdrawnLocation (tmp)
     TwmWindow *tmp;
 {
@@ -826,7 +845,8 @@ RestoreWithdrawnLocation (tmp)
  ***********************************************************************
  */
 
-void Reborder (time)
+void 
+Reborder (time)
 Time time;
 {
     TwmWindow *tmp;			/* temp twm window structure */
@@ -852,11 +872,10 @@ Time time;
     SetFocus ((TwmWindow*)NULL, time);
 }
 
-SIGNAL_T Done()
+SIGNAL_T 
+Done(int sig)
 {
-    Reborder (CurrentTime);
-    XCloseDisplay(dpy);
-    exit(0);
+    TimeToYield = True;
     SIGNAL_RETURN;
 }
 
@@ -870,7 +889,8 @@ SIGNAL_T Done()
 Bool ErrorOccurred = False;
 XErrorEvent LastErrorEvent;
 
-static int TwmErrorHandler(dpy, event)
+static int 
+TwmErrorHandler(dpy, event)
     Display *dpy;
     XErrorEvent *event;
 {
@@ -887,7 +907,8 @@ static int TwmErrorHandler(dpy, event)
 
 
 /* ARGSUSED*/
-static int CatchRedirectError(dpy, event)
+static int 
+CatchRedirectError(dpy, event)
     Display *dpy;
     XErrorEvent *event;
 {

@@ -60,6 +60,7 @@ from The Open Group.
  * 28-Oct-87 Thomas E. LaStrange	File created
  * 10-Oct-90 David M. Sternlicht        Storeing saved colors on root
  ***********************************************************************/
+/* $XFree86: xc/programs/twm/twm.h,v 3.12 2001/12/14 20:01:10 dawes Exp $ */
 
 #ifndef _TWM_
 #define _TWM_
@@ -86,7 +87,7 @@ from The Open Group.
 #define SIGNAL_RETURN return
 #endif
 
-typedef SIGNAL_T (*SigProc)();	/* type of function returned by signal() */
+typedef SIGNAL_T (*SigProc)(int); /* type of function returned by signal() */
 
 #define BW 2			/* border width */
 #define BW2 4			/* border width  * 2 */
@@ -138,12 +139,6 @@ typedef SIGNAL_T (*SigProc)();	/* type of function returned by signal() */
 /* defines for zooming/unzooming */
 #define ZOOM_NONE 0
 
-#define FBF(fix_fore, fix_back, fix_font)\
-    Gcv.foreground = fix_fore;\
-    Gcv.background = fix_back;\
-    Gcv.font = fix_font;\
-    XChangeGC(dpy, Scr->NormalGC, GCFont|GCForeground|GCBackground,&Gcv)
-
 #define FB(fix_fore, fix_back)\
     Gcv.foreground = fix_fore;\
     Gcv.background = fix_back;\
@@ -153,8 +148,11 @@ typedef struct MyFont
 {
     char *name;			/* name of the font */
     XFontStruct *font;		/* font structure */
+    XFontSet fontset;		/* fontset structure */
     int height;			/* height of the font */
     int y;			/* Y coordinate to draw characters */
+    int ascent;
+    int descent;
 } MyFont;
 
 typedef struct ColorPair
@@ -349,16 +347,15 @@ typedef struct TWMWinConfigEntry
 #define TBPM_QUESTION ":question"	/* name of unknown titlebar pixmap */
 
 #include <X11/Xosdefs.h>
-#ifndef X_NOT_STDC_ENV
 #include <stdlib.h>
-#else
-extern char *malloc(), *calloc(), *realloc(), *getenv();
-extern void free();
-#endif
-extern void Reborder();
-extern SIGNAL_T Done();
-void ComputeCommonTitleOffsets();
-void ComputeWindowTitleOffsets(), ComputeTitleLocation();
+extern void InitVariables ( void );
+extern void CreateFonts ( void );
+extern void RestoreWithdrawnLocation ( TwmWindow *tmp );
+extern void Reborder( Time time);
+extern SIGNAL_T Done( int sig );
+extern void ComputeCommonTitleOffsets ( void );
+extern void ComputeTitleLocation ( TwmWindow *tmp );
+extern void ComputeWindowTitleOffsets ( TwmWindow *tmp_win, int width, Bool squeeze );
 extern char *ProgramName;
 extern Display *dpy;
 extern XtAppContext appContext;
@@ -397,19 +394,33 @@ extern int InfoLines;
 extern char Info[][INFO_SIZE];
 extern int Argc;
 extern char **Argv;
-extern char **Environ;
-extern void NewFontCursor();
-extern Pixmap CreateMenuIcon();
+extern void NewFontCursor ( Cursor *cp, char *str );
+extern void NewBitmapCursor ( Cursor *cp, char *source, char *mask );
+extern Pixmap CreateMenuIcon ( int height, unsigned int *widthp, unsigned int *heightp );
 
 extern Bool ErrorOccurred;
+extern volatile Bool TimeToYield;
 extern XErrorEvent LastErrorEvent;
 
 #define ResetError() (ErrorOccurred = False)
 
 extern Bool RestartPreviousState;
-extern Bool GetWMState();
+extern Bool GetWMState ( Window w, int *statep, Window *iwp );
+
+extern void twmrc_error_prefix ( void );
+
+extern int yyparse ( void );
+extern int yylex ( void ); 
+extern void yyerror ( char *s );
+extern int doinput ( char *buf, int size );
+extern void RemoveDQuote ( char *str );
 
 extern Atom TwmAtoms[];
+
+extern Bool use_fontset;
+
+extern int ShapeEventBase;
+extern int ShapeErrorBase;
 
 #define _XA_MIT_PRIORITY_COLORS		TwmAtoms[0]
 #define _XA_WM_CHANGE_STATE		TwmAtoms[1]

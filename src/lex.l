@@ -59,20 +59,20 @@ in this Software without prior written authorization from The Open Group.
  * 12-Nov-87 Thomas E. LaStrange		File created
  *
  ***********************************************************************/
+/* $XFree86: xc/programs/twm/lex.l,v 3.14 2001/12/14 20:01:08 dawes Exp $ */
 
 /* #include <stdio.h> */		/* lex already includes stdio.h */
+#include "twm.h"
 #include "gram.h"
+#include "list.h"
 #include "parse.h"
-extern char *ProgramName;
 
-extern int ParseError;
 #ifdef FLEX_SCANNER
 int yylineno;
 
 #undef YY_INPUT
 #define YY_INPUT(buf,result,size) ((result) = doinput((buf),(size)))
-doinput (buf, size)
-char *buf;
+int doinput (char *buf, int size)
 {
 	int c;
 
@@ -85,6 +85,7 @@ char *buf;
 	buf[0] = c;
 	return (1);
 }
+#define YY_NO_UNPUT
 #endif
 
 %}
@@ -102,7 +103,7 @@ number				[0-9]+
 "-"				{ return MINUS; }
 "|"				{ return OR; }
 
-[a-zA-Z\.]+			{ int token = parse_keyword (yytext, 
+[a-zA-Z\.]+			{ int token = parse_keyword ((char *)yytext, 
 							     &yylval.num);
 				  if (token == ERRORTOKEN) {
 				      twmrc_error_prefix();
@@ -122,7 +123,7 @@ number				[0-9]+
 				  return (NUMBER);
 				}
 \#[^\n]*\n			{;}
-[\n\t ]				{;}
+[\r\n\t ]			{;}
 .				{
 				  twmrc_error_prefix();
 				  fprintf (stderr, 
@@ -132,7 +133,7 @@ number				[0-9]+
 				}
 %%
 #ifndef yywrap
-yywrap() { return(1);}
+int yywrap() { return(1);}
 #endif
 
 #undef unput

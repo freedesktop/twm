@@ -1,3 +1,4 @@
+/* $XFree86: xc/programs/twm/add_window.c,v 1.12 2002/12/10 22:28:07 tsi Exp $ */
 /*****************************************************************************/
 /*
 
@@ -64,7 +65,6 @@ in this Software without prior written authorization from The Open Group.
 #include <stdio.h>
 #include "twm.h"
 #include <X11/Xatom.h>
-#include "add_window.h"
 #include "util.h"
 #include "resize.h"
 #include "parse.h"
@@ -73,6 +73,8 @@ in this Software without prior written authorization from The Open Group.
 #include "menus.h"
 #include "screen.h"
 #include "iconmgr.h"
+#include "session.h"
+#include "add_window.h"
 
 #define gray_width 2
 #define gray_height 2
@@ -86,7 +88,11 @@ int AddingH;
 
 static int PlaceX = 50;
 static int PlaceY = 50;
-static void CreateWindowTitlebarButtons();
+
+static void do_add_binding ( int button, int context, int modifier, int func );
+static Window CreateHighlightWindow ( TwmWindow *tmp_win );
+static void CreateWindowTitlebarButtons ( TwmWindow *tmp_win );
+
 
 char NoName[] = "Untitled"; /* name if no name is specified */
 
@@ -99,7 +105,7 @@ char NoName[] = "Untitled"; /* name if no name is specified */
  * 
  ************************************************************************
  */
-
+void
 GetGravityOffsets (tmp, xp, yp)
     TwmWindow *tmp;			/* window from which to get gravity */
     int *xp, *yp;			/* return values */
@@ -161,9 +167,6 @@ IconMgr *iconp;
     unsigned long valuemask;		/* mask for create windows */
     XSetWindowAttributes attributes;	/* attributes for create windows */
     int width, height;			/* tmp variable */
-    Atom actual_type;
-    int actual_format;
-    unsigned long nitems, bytesafter;
     int ask_user;		/* don't know where to put the window */
     int gravx, gravy;			/* gravity signs for positioning */
     int namelen;
@@ -175,6 +178,7 @@ IconMgr *iconp;
     int restoredFromPrevSession;
     Bool width_ever_changed_by_user;
     Bool height_ever_changed_by_user;
+    char *name;
 
 #ifdef DEBUG
     fprintf(stderr, "AddWindow: w = 0x%x\n", w);
@@ -198,7 +202,8 @@ IconMgr *iconp;
 
     XGetWindowAttributes(dpy, tmp_win->w, &tmp_win->attr);
 
-    XFetchName(dpy, tmp_win->w, &tmp_win->name);
+    if (!I18N_FetchName(dpy, tmp_win->w, &name))
+      name = NULL;
     tmp_win->class = NoClass;
     XGetClassHint(dpy, tmp_win->w, &tmp_win->class);
     FetchWmProtocols (tmp_win);
@@ -272,29 +277,33 @@ IconMgr *iconp;
     tmp_win->transient = Transient(tmp_win->w, &tmp_win->transientfor);
 
     tmp_win->nameChanged = 0;
-    if (tmp_win->name == NULL)
-	tmp_win->name = NoName;
+    if (name == NULL)
+	tmp_win->name = strdup(NoName);
+    else {
+      tmp_win->name = strdup(name);
+      free(name);
+    }
     if (tmp_win->class.res_name == NULL)
     	tmp_win->class.res_name = NoName;
     if (tmp_win->class.res_class == NULL)
     	tmp_win->class.res_class = NoName;
 
-    tmp_win->full_name = tmp_win->name;
+    tmp_win->full_name = strdup(tmp_win->name);
     namelen = strlen (tmp_win->name);
 
     tmp_win->highlight = Scr->Highlight && 
-	(!(short)(int) LookInList(Scr->NoHighlight, tmp_win->full_name, 
+	(!(short)(long) LookInList(Scr->NoHighlight, tmp_win->full_name, 
 	    &tmp_win->class));
 
     tmp_win->stackmode = Scr->StackMode &&
-	(!(short)(int) LookInList(Scr->NoStackModeL, tmp_win->full_name, 
+	(!(short)(long) LookInList(Scr->NoStackModeL, tmp_win->full_name, 
 	    &tmp_win->class));
 
     tmp_win->titlehighlight = Scr->TitleHighlight && 
-	(!(short)(int) LookInList(Scr->NoTitleHighlight, tmp_win->full_name, 
+	(!(short)(long) LookInList(Scr->NoTitleHighlight, tmp_win->full_name, 
 	    &tmp_win->class));
 
-    tmp_win->auto_raise = (short)(int) LookInList(Scr->AutoRaise, 
+    tmp_win->auto_raise = (short)(long) LookInList(Scr->AutoRaise, 
 						  tmp_win->full_name,
 					    &tmp_win->class);
     if (tmp_win->auto_raise) Scr->NumAutoRaises++;
@@ -302,11 +311,11 @@ IconMgr *iconp;
     if (Scr->IconifyByUnmapping)
     {
 	tmp_win->iconify_by_unmapping = iconm ? FALSE :
-	    !(short)(int) LookInList(Scr->DontIconify, tmp_win->full_name,
+	    !(short)(long) LookInList(Scr->DontIconify, tmp_win->full_name,
 		&tmp_win->class);
     }
     tmp_win->iconify_by_unmapping |= 
-	(short)(int) LookInList(Scr->IconifyByUn, tmp_win->full_name,
+	(short)(long) LookInList(Scr->IconifyByUn, tmp_win->full_name,
 	    &tmp_win->class);
 
     if (LookInList(Scr->WindowRingL, tmp_win->full_name, &tmp_win->class)) {
@@ -480,7 +489,7 @@ IconMgr *iconp;
 		    break;
 	    }
 
-	    width = (SIZE_HINDENT + XTextWidth (Scr->SizeFont.font,
+	    width = (SIZE_HINDENT + MyFont_TextWidth (&Scr->SizeFont,
 						tmp_win->name, namelen));
 	    height = Scr->SizeFont.height + SIZE_VINDENT * 2;
 	    
@@ -488,12 +497,13 @@ IconMgr *iconp;
 	    XMapRaised(dpy, Scr->SizeWindow);
 	    InstallRootColormap();
 
-	    FBF(Scr->DefaultC.fore, Scr->DefaultC.back,
-		Scr->SizeFont.font->fid);
-	    XDrawImageString (dpy, Scr->SizeWindow, Scr->NormalGC,
-			      SIZE_HINDENT,
-			      SIZE_VINDENT + Scr->SizeFont.font->ascent,
-			      tmp_win->name, namelen);
+	    MyFont_ChangeGC(Scr->DefaultC.fore, Scr->DefaultC.back,
+			    &Scr->SizeFont);
+	    MyFont_DrawImageString (dpy, Scr->SizeWindow, &Scr->SizeFont,
+				    Scr->NormalGC,
+				    SIZE_HINDENT,
+				    SIZE_VINDENT + Scr->SizeFont.ascent,
+				    tmp_win->name, namelen);
 
 	    AddingW = tmp_win->attr.width + bw2;
 	    AddingH = tmp_win->attr.height + tmp_win->title_height + bw2;
@@ -588,11 +598,12 @@ IconMgr *iconp;
 		int lastx, lasty;
 
 		Scr->SizeStringOffset = width +
-		  XTextWidth(Scr->SizeFont.font, ": ", 2);
+		  MyFont_TextWidth(&Scr->SizeFont, ": ", 2);
 		XResizeWindow (dpy, Scr->SizeWindow, Scr->SizeStringOffset +
 			       Scr->SizeStringWidth, height);
-		XDrawImageString (dpy, Scr->SizeWindow, Scr->NormalGC, width,
-				  SIZE_VINDENT + Scr->SizeFont.font->ascent,
+		MyFont_DrawImageString (dpy, Scr->SizeWindow, &Scr->SizeFont,
+				  Scr->NormalGC, width,
+				  SIZE_VINDENT + Scr->SizeFont.ascent,
 				  ": ", 2);
 		if (0/*Scr->AutoRelativeResize*/) {
 		    int dx = (tmp_win->attr.width / 4);
@@ -718,16 +729,19 @@ IconMgr *iconp;
 
     if (tmp_win->old_bw) XSetWindowBorderWidth (dpy, tmp_win->w, 0);
 
-    tmp_win->name_width = XTextWidth(Scr->TitleBarFont.font, tmp_win->name,
-				     namelen);
+    tmp_win->name_width = MyFont_TextWidth(&Scr->TitleBarFont, tmp_win->name,
+					    namelen);
 
-    if (XGetWindowProperty (dpy, tmp_win->w, XA_WM_ICON_NAME, 0L, 200L, False,
-			    XA_STRING, &actual_type, &actual_format, &nitems,
-			    &bytesafter,(unsigned char **)&tmp_win->icon_name))
-	tmp_win->icon_name = tmp_win->name;
-
-    if (tmp_win->icon_name == NULL)
-	tmp_win->icon_name = tmp_win->name;
+    if (!I18N_GetIconName(dpy, tmp_win->w, &name)) {
+	tmp_win->icon_name = strdup(tmp_win->name);
+    } else {
+	if (name == NULL) {
+	    tmp_win->icon_name = strdup(tmp_win->name);
+	} else {
+	    tmp_win->icon_name = strdup(name);
+	    free(name);
+	}
+    }
 
     tmp_win->iconified = FALSE;
     tmp_win->icon = FALSE;
@@ -994,6 +1008,7 @@ static void do_add_binding (button, context, modifier, func)
     mb->item = NULL;
 }
 
+void
 AddDefaultBindings ()
 {
     /*
@@ -1208,6 +1223,7 @@ void ComputeCommonTitleOffsets ()
 
 void ComputeWindowTitleOffsets (tmp_win, width, squeeze)
     TwmWindow *tmp_win;
+    int width;
     Bool squeeze;
 {
     tmp_win->highlightx = (Scr->TBInfo.titlex + tmp_win->name_width);
@@ -1360,6 +1376,7 @@ static void CreateWindowTitlebarButtons (tmp_win)
 }
 
 
+void
 SetHighlightPixmap (filename)
     char *filename;
 {
@@ -1376,6 +1393,7 @@ SetHighlightPixmap (filename)
 }
 
 
+void
 FetchWmProtocols (tmp)
     TwmWindow *tmp;
 {
@@ -1472,7 +1490,8 @@ CreateColormapWindow(w, creating_parent, property_window)
 
     return (cwin);
 }
-		
+
+void		
 FetchWmColormapWindows (tmp)
     TwmWindow *tmp;
 {
@@ -1482,7 +1501,6 @@ FetchWmColormapWindows (tmp)
     int number_cmap_windows = 0;
     ColormapWindow **cwins = NULL;
     int previously_installed;
-    extern void free_cwins();
 
     number_cmap_windows = 0;
 

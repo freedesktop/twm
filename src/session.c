@@ -25,6 +25,7 @@ in this Software without prior written authorization from The Open Group.
 
 Author:  Ralph Mor, X Consortium
 ******************************************************************************/
+/* $XFree86: xc/programs/twm/session.c,v 3.8 2001/12/14 20:01:10 dawes Exp $ */
 
 #include <X11/Xos.h>
 
@@ -47,6 +48,9 @@ Author:  Ralph Mor, X Consortium
 #endif
 #endif
 #endif /* PATH_MAX */
+#ifdef HAS_MKSTEMP
+#include <unistd.h>
+#endif
 
 #include <X11/Xlib.h>
 #include <X11/SM/SMlib.h>
@@ -54,6 +58,7 @@ Author:  Ralph Mor, X Consortium
 #include <stdio.h>
 #include "twm.h"
 #include "screen.h"
+#include "session.h"
 
 SmcConn smcConn = NULL;
 XtInputId iceInputId;
@@ -64,6 +69,11 @@ Bool sent_save_done = 0;
 
 #define SAVEFILE_VERSION 2
 
+#ifndef HAS_MKSTEMP
+static char *unique_filename ( char *path, char *prefix );
+#else
+static char *unique_filename ( char *path, char *prefix, int *pFd );
+#endif
 
 
 char *
@@ -127,11 +137,7 @@ Window window;
 
 
 int
-write_byte (file, b)
-
-FILE		*file;
-unsigned char   b;
-
+write_byte (FILE *file, unsigned char b)
 {
     if (fwrite ((char *) &b, 1, 1, file) != 1)
 	return 0;
@@ -140,11 +146,7 @@ unsigned char   b;
 
 
 int
-write_ushort (file, s)
-
-FILE		*file;
-unsigned short	s;
-
+write_ushort (FILE *file, unsigned short s)
 {
     unsigned char   file_short[2];
 
@@ -157,11 +159,7 @@ unsigned short	s;
 
 
 int
-write_short (file, s)
-
-FILE	*file;
-short	s;
-
+write_short (FILE *file, short s)
 {
     unsigned char   file_short[2];
 
@@ -415,12 +413,8 @@ char *windowRole;
 
 
 int
-ReadWinConfigEntry (configFile, version, pentry)
-
-FILE *configFile;
-unsigned short version;
-TWMWinConfigEntry **pentry;
-
+ReadWinConfigEntry (FILE *configFile, unsigned short version,
+		    TWMWinConfigEntry **pentry)
 {
     TWMWinConfigEntry *entry;
     unsigned char byte;
@@ -721,13 +715,21 @@ Bool *height_ever_changed_by_user;
 
 
 
+#ifndef HAS_MKSTEMP
 static char *
 unique_filename (path, prefix)
-
 char *path;
 char *prefix;
+#else
+static char *
+unique_filename (path, prefix, pFd)
+char *path;
+char *prefix;
+int *pFd;
+#endif
 
 {
+#ifndef HAS_MKSTEMP
 #ifndef X_NOT_POSIX
     return ((char *) tempnam (path, prefix));
 #else
@@ -744,6 +746,19 @@ char *prefix;
     }
     else
 	return (NULL);
+#endif
+#else 
+    char tempFile[PATH_MAX];
+    char *ptr;
+
+    sprintf (tempFile, "%s/%sXXXXXX", path, prefix);
+    ptr = (char *)malloc(strlen(tempFile) + 1);
+    if (ptr != NULL) 
+    {
+	strcpy(ptr, tempFile);
+	*pFd =  mkstemp(ptr);
+    }
+    return ptr;
 #endif
 }
 
@@ -769,6 +784,9 @@ SmPointer clientData;
     char discardCommand[80];
     int numVals, i;
     static int first_time = 1;
+#ifdef HAS_MKSTEMP
+    int fd;
+#endif
 
     if (first_time)
     {
@@ -782,7 +800,7 @@ SmPointer clientData;
 	prop1val.value = Argv[0];
 	prop1val.length = strlen (Argv[0]);
 
-	sprintf (userId, "%d", getuid());
+	sprintf (userId, "%ld", (long)getuid());
 	prop2.name = SmUserID;
 	prop2.type = SmARRAY8;
 	prop2.num_vals = 1;
@@ -813,12 +831,19 @@ SmPointer clientData;
 	if (!path)
 	    path = ".";
     }
-
+#ifndef HAS_MKSTEMP
     if ((filename = unique_filename (path, ".twm")) == NULL)
 	goto bad;
 
     if (!(configFile = fopen (filename, "wb")))
 	goto bad;
+#else
+    if ((filename = unique_filename (path, ".twm", &fd)) == NULL)
+	goto bad;
+    
+    if (!(configFile = fdopen(fd, "wb"))) 
+	goto bad;
+#endif
 
     if (!write_ushort (configFile, SAVEFILE_VERSION))
 	goto bad;
@@ -952,7 +977,7 @@ SmPointer clientData;
 {
     SmcCloseConnection (smcConn, 0, NULL);
     XtRemoveInput (iceInputId);
-    Done();
+    Done(0);
 }
 
 

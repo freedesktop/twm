@@ -22,6 +22,7 @@ Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
  * */
+/* $XFree86: xc/programs/twm/iconmgr.h,v 1.6 2001/12/14 20:01:08 dawes Exp $ */
 
 /***********************************************************************
  *
@@ -74,20 +75,20 @@ typedef struct IconMgr
 
 extern int iconmgr_textx;
 extern WList *DownIconManager;
+extern int iconifybox_width, iconifybox_height;
 
-extern void CreateIconManagers();
-extern IconMgr *AllocateIconManager();
-extern void MoveIconManager();
-extern void JumpIconManager();
-extern WList *AddIconManager();
-extern void InsertInIconManager();
-extern void RemoveFromIconManager();
-extern void RemoveIconManager();
-extern void ActiveIconManager();
-extern void NotActiveIconManager();
-extern void DrawIconManagerBorder();
-extern void SortIconManager();
-extern void PackIconManager();
-
+extern void ActiveIconManager ( WList *active );
+extern WList *AddIconManager ( TwmWindow *tmp_win );
+extern IconMgr *AllocateIconManager ( char *name, char *icon_name, char *geom, int columns );
+extern void CreateIconManagers ( void );
+extern void DrawIconManagerBorder ( WList *tmp );
+extern void InsertInIconManager ( IconMgr *ip, WList *tmp, TwmWindow *tmp_win );
+extern void JumpIconManager ( int dir );
+extern void MoveIconManager ( int dir );
+extern void NotActiveIconManager ( WList *active );
+extern void PackIconManager ( IconMgr *ip );
+extern void RemoveFromIconManager ( IconMgr *ip, WList *tmp );
+extern void RemoveIconManager ( TwmWindow *tmp_win );
+extern void SortIconManager ( IconMgr *ip );
 
 #endif /* _ICONMGR_ */

@@ -1,3 +1,4 @@
+/* $XFree86: xc/programs/twm/parse.c,v 1.16 2002/12/10 22:29:55 tsi Exp $ */
 /*****************************************************************************/
 /*
 
@@ -81,21 +82,20 @@ static FILE *twmrc;
 static int ptr = 0;
 static int len = 0;
 static char buff[BUF_LEN+1];
-static char overflowbuff[20];		/* really only need one */
+static unsigned char overflowbuff[20];		/* really only need one */
 static int overflowlen;
 static char **stringListSource, *currentString;
-static int ParseUsePPosition();
+
+static int doparse ( int (*ifunc)(void), char *srctypename, char *srcname );
+static int twmFileInput ( void );
+static int twmStringListInput ( void );
+static int ParseUsePPosition ( char *s );
 
 extern int yylineno;
-extern int mods;
 
 int ConstrainedMoveTime = 400;		/* milliseconds, event times */
 
-static int twmFileInput(), twmStringListInput();
-void twmUnput();
-int (*twmInputFunc)();
-
-extern char *defTwmrc[];		/* default bindings */
+int (*twmInputFunc)(void);
 
 
 /***********************************************************************
@@ -110,7 +110,7 @@ extern char *defTwmrc[];		/* default bindings */
  */
 
 static int doparse (ifunc, srctypename, srcname)
-    int (*ifunc)();
+    int (*ifunc)(void);
     char *srctypename;
     char *srcname;
 {
@@ -264,8 +264,6 @@ static int twmFileInput()
 	if (fgets(buff, BUF_LEN, twmrc) == NULL)
 	    return 0;
 
-	yylineno++;
-
 	ptr = 0;
 	len = strlen(buff);
     }
@@ -305,7 +303,7 @@ void twmUnput (c)
     int c;
 {
     if (overflowlen < sizeof overflowbuff) {
-	overflowbuff[overflowlen++] = (char) c;
+	overflowbuff[overflowlen++] = (unsigned char) c;
     } else {
 	twmrc_error_prefix ();
 	fprintf (stderr, "unable to unput character (%d)\n",
@@ -327,6 +325,7 @@ void twmUnput (c)
 
 void
 TwmOutput(c)
+    int c;
 {
     putchar(c);
 }
@@ -495,6 +494,7 @@ static TwmKeyword keytable[] = {
     { "f.showiconmgr",		FKEYWORD, F_SHOWLIST },
     { "f.sorticonmgr",		FKEYWORD, F_SORTICONMGR },
     { "f.source",		FSKEYWORD, F_BEEP },  /* XXX - don't work */
+    { "f.startwm",		FSKEYWORD, F_STARTWM },
     { "f.title",		FKEYWORD, F_TITLE },
     { "f.topzoom",		FKEYWORD, F_TOPZOOM },
     { "f.twmrc",		FKEYWORD, F_RESTART },
@@ -503,6 +503,8 @@ static TwmKeyword keytable[] = {
     { "f.version",		FKEYWORD, F_VERSION },
     { "f.vlzoom",		FKEYWORD, F_LEFTZOOM },
     { "f.vrzoom",		FKEYWORD, F_RIGHTZOOM },
+    { "f.warpnext",		FKEYWORD, F_WARPNEXT },
+    { "f.warpprev",		FKEYWORD, F_WARPPREV },
     { "f.warpring",		FSKEYWORD, F_WARPRING },
     { "f.warpto",		FSKEYWORD, F_WARPTO },
     { "f.warptoiconmgr",	FSKEYWORD, F_WARPTOICONMGR },
@@ -977,6 +979,7 @@ int do_color_keyword (keyword, colormode, s)
 /*
  * put_pixel_on_root() Save a pixel value in twm root window color property.
  */
+void
 put_pixel_on_root(pixel)                                 
     Pixel pixel;                                         
 {                                                        
@@ -1003,6 +1006,7 @@ put_pixel_on_root(pixel)
 /*
  * do_string_savecolor() save a color from a string in the twmrc file.
  */
+void
 do_string_savecolor(colormode, s)
      int colormode;
      char *s;
@@ -1018,6 +1022,7 @@ do_string_savecolor(colormode, s)
 typedef struct _cnode {int i; struct _cnode *next;} Cnode, *Cptr;
 Cptr chead = NULL;
 
+void
 do_var_savecolor(key)
 int key;
 {
@@ -1038,7 +1043,8 @@ int key;
  * assign_var_savecolor() traverse the var save color list placeing the pixels
  *                        in the root window property.
  */
-void assign_var_savecolor()
+void 
+assign_var_savecolor()
 {
   Cptr cp = chead;
   while (cp != NULL) {
@@ -1085,7 +1091,8 @@ void assign_var_savecolor()
   }
 }
 
-static int ParseUsePPosition (s)
+static int 
+ParseUsePPosition (s)
     register char *s;
 {
     XmuCopyISOLatin1Lowered (s, s);
@@ -1103,6 +1110,7 @@ static int ParseUsePPosition (s)
 }
 
 
+void
 do_squeeze_entry (list, name, justify, num, denom)
     name_list **list;			/* squeeze or dont-squeeze list */
     char *name;				/* window name */
@@ -1137,8 +1145,8 @@ do_squeeze_entry (list, name, justify, num, denom)
 
 	if (!sinfo) {
 	    twmrc_error_prefix();
-	    fprintf (stderr, "unable to allocate %d bytes for squeeze info\n",
-		     sizeof(SqueezeInfo));
+	    fprintf (stderr, "unable to allocate %ld bytes for squeeze info\n",
+		     (unsigned long)sizeof(SqueezeInfo));
 	    return;
 	}
 	sinfo->justify = justify;
