@@ -60,7 +60,7 @@ from The Open Group.
  * 28-Oct-87 Thomas E. LaStrange	File created
  * 10-Oct-90 David M. Sternlicht        Storeing saved colors on root
  ***********************************************************************/
-/* $XFree86: xc/programs/twm/twm.h,v 3.13 2003/04/21 11:46:14 herrb Exp $ */
+/* $XFree86: xc/programs/twm/twm.h,v 3.12 2001/12/14 20:01:10 dawes Exp $ */
 
 #ifndef _TWM_
 #define _TWM_
