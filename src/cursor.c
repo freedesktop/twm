@@ -22,7 +22,7 @@ Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
  * */
-/* $XFree86: xc/programs/twm/cursor.c,v 1.5 2001/12/14 20:01:06 dawes Exp $ */
+/* $XFree86: xc/programs/twm/cursor.c,v 1.4 2001/01/17 23:45:05 dawes Exp $ */
 
 /***********************************************************************
  *

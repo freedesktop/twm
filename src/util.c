@@ -48,7 +48,7 @@ in this Software without prior written authorization from The Open Group.
 /**    TORTIOUS ACTION, ARISING OUT OF OR IN  CONNECTION  WITH  THE  USE    **/
 /**    OR PERFORMANCE OF THIS SOFTWARE.                                     **/
 /*****************************************************************************/
-/* $XFree86: xc/programs/twm/util.c,v 1.13 2002/09/24 21:00:28 tsi Exp $ */
+/* $XFree86: xc/programs/twm/util.c,v 1.12 2002/09/19 13:22:05 tsi Exp $ */
 
 
 /***********************************************************************
