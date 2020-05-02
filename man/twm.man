@@ -1263,7 +1263,7 @@ they may be lost if they are iconified and no bindings to
 .nf
 .I $HOME/.twmrc.<screen number>
 .I $HOME/.twmrc
-.I __projectroot__/lib/X11/twm/system.twmrc
+.I __datadir__/X11/twm/system.twmrc
 .fi
 .SH "ENVIRONMENT VARIABLES"
 .IP "DISPLAY" 8
